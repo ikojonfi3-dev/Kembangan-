@@ -13,9 +13,9 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Extract ZIP File If Present
+    - name: Prepare Workspace & Extract ZIP
       run: |
-        echo "=== Extracting ZIP file if present ==="
+        echo "=== Preparing Workspace ==="
         shopt -s nullglob
         for zipfile in *.zip; do
           echo "Extracting $zipfile..."
@@ -28,8 +28,13 @@ jobs:
           cp -rn "$ROOT_DIR"/* . || true
         fi
         
-        if [ ! -f ".env" ]; then
-          touch .env
+        touch .env .env.example
+        
+        if [ -f "debug.keystore.base64" ] && [ ! -f "debug.keystore" ]; then
+          base64 -d debug.keystore.base64 > debug.keystore || true
+        fi
+        if [ ! -f "debug.keystore" ]; then
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
         fi
         ls -la
 
