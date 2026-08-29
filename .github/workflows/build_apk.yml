@@ -13,20 +13,23 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Extract ZIP File
+    - name: Extract ZIP File If Present
       run: |
-        echo "=== Checking and Extracting ZIP ==="
+        echo "=== Extracting ZIP file if present ==="
         shopt -s nullglob
         for zipfile in *.zip; do
           echo "Extracting $zipfile..."
           unzip -o -q "$zipfile"
         done
         
-        # Cari direktori tempat settings.gradle.kts atau build.gradle.kts berada
         ROOT_DIR=$(find . -maxdepth 3 -name "settings.gradle.kts" -o -name "settings.gradle" | head -n 1 | xargs -r dirname)
         if [ -n "$ROOT_DIR" ] && [ "$ROOT_DIR" != "." ]; then
-          echo "Found project root in $ROOT_DIR, syncing to workspace root..."
+          echo "Moving files from $ROOT_DIR to workspace root..."
           cp -rn "$ROOT_DIR"/* . || true
+        fi
+        
+        if [ ! -f ".env" ]; then
+          touch .env
         fi
         ls -la
 
@@ -41,19 +44,15 @@ jobs:
 
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: '8.13'
 
-    - name: Build APK with Gradle
+    - name: Build APK
       run: |
-        if [ -f "./gradlew" ]; then
-          chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
-        else
-          gradle assembleDebug --no-daemon --stacktrace
-        fi
+        gradle assembleDebug --no-daemon --stacktrace || (gradle wrapper && ./gradlew assembleDebug --no-daemon)
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
-      if: always()
       with:
         name: KembanganBot-APK
         path: |
